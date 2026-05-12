@@ -1,0 +1,305 @@
+---
+title: "Introduction to MixCat"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to MixCat}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4.5)
+```
+
+## Overview
+
+MixCat fits **mixture catalytic models** to antibody titer data, jointly estimating:
+
+- The **force of infection (FOI)** via a catalytic model, giving smooth age-specific seroprevalence
+- The **titer distributions** of seronegative and seropositive individuals via a two-component Gaussian mixture
+
+Two main Stan models are provided:
+
+| Model | When to use |
+|---|---|
+| `MixtureCatalytic` | Single population; assumes endemic transmission |
+| `Mixture` | Age-specific seroprevalence estimated directly; no catalytic assumption |
+| `MixtureCatalyticGrouped` | Multiple populations with separate FOI (e.g. urban/rural) |
+
+---
+
+## Setup
+
+```{r libraries}
+library(rstan)
+library(bayesplot)
+library(tidyverse)
+
+source("../utils.R")
+
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+```
+
+---
+
+## Data
+
+MixCat expects a data frame with a titer column and an age group column. Here we use
+the bundled simulated dataset, which was generated under a catalytic model with
+$\lambda = 0.07$, $\mu_0 = 2$, $\mu_1 = 2.5$, $\sigma_0 = 0.7$, $\sigma_1 = 0.9$.
+
+```{r data}
+simdata <- readRDS("../data/SimulatedData.RDS")
+
+# Age group bounds
+ageL <- c(0, 10, 20, 30, 40, 50, 60, 70, 80)
+ageU <- c(9, 19, 29, 39, 49, 59, 69, 79, 90)
+
+df <- simdata$simdf |>
+  mutate(age_group_int = as.integer(as.factor(age_group)),
+         age_label     = paste0(ageL[age_group_int], "-", ageU[age_group_int]),
+         age_label     = factor(age_label, levels = paste0(ageL, "-", ageU)))
+
+head(df)
+```
+
+```{r data-plot, fig.cap="Titer distribution by age group"}
+ggplot(df, aes(x = age_label, y = titer)) +
+  geom_jitter(width = 0.2, alpha = 0.4, color = "steelblue3") +
+  geom_boxplot(alpha = 0.3, outlier.shape = NA) +
+  theme_bw() +
+  xlab("Age group") + ylab("Titer") +
+  theme(text = element_text(size = 13),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r titer-hist, fig.cap="Overall titer distribution"}
+ggplot(df, aes(x = titer)) +
+  geom_histogram(bins = 30, fill = "steelblue3", color = "white", alpha = 0.8) +
+  theme_bw() +
+  xlab("Titer") + ylab("Count") +
+  theme(text = element_text(size = 13))
+```
+
+---
+
+## Preparing model inputs
+
+`make_model_data()` constructs the correctly formatted Stan input list from your titer
+vector, age group indices, and prior specifications. Priors are specified for the four
+mixture parameters in order: $\mu_0$, $\mu_1$, $\sigma_0$, $\sigma_1$.
+
+```{r model-data}
+model_data <- make_model_data(
+  titer       = df$titer,
+  age_group   = df$age_group_int,
+  ageL        = ageL,
+  ageU        = ageU,
+  prior_means = c(2, 3, 1, 1),
+  prior_sds   = c(1, 1, 1, 1)
+)
+
+# Check sample sizes per age group
+tibble(age_group = paste0(ageL, "-", ageU),
+       n         = model_data$n_age)
+```
+
+---
+
+## Fitting the models
+
+Models are fitted with `rstan::stan()`. The `iter` and `warmup` arguments control total
+and warmup iterations per chain; post-warmup draws = `iter - warmup`.
+
+```{r fit, cache=TRUE, results="hide"}
+fit_cat <- stan(
+  file    = "../StanModels/MixtureCatalytic.stan",
+  data    = model_data,
+  chains  = 3, cores  = 1,
+  iter    = 1000, warmup = 500,
+  refresh = 10
+)
+
+fit_mix <- stan(
+  file    = "../StanModels/Mixture.stan",
+  data    = model_data,
+  chains  = 3, cores  = 1,
+  iter    = 1000, warmup = 500,
+  refresh = 10
+)
+```
+
+---
+
+## Checking convergence
+
+```{r convergence, fig.cap="Trace plots — MixtureCatalytic"}
+color_scheme_set("mix-blue-red")
+mcmc_trace(fit_cat, regex_pars = c("lambda", "mu", "sd"))
+```
+
+```{r rhat, fig.cap="R-hat values — all parameters should be near 1"}
+mcmc_rhat(rhat(fit_cat)) + yaxis_text()
+```
+
+Posterior draws are extracted with `rstan::extract()`, returning a named list with one
+element per parameter.
+
+```{r extract}
+draws_cat <- rstan::extract(fit_cat)
+draws_mix <- rstan::extract(fit_mix)
+```
+
+---
+
+## MixtureCatalytic outputs
+
+### Seroprevalence by age
+
+The catalytic model estimates a single FOI ($\lambda$) and derives a smooth seroprevalence
+curve: $\pi(a) = 1 - e^{-\lambda a}$.
+
+```{r seroprev-cat, fig.cap="Estimated seroprevalence with 95% CrI (catalytic model)"}
+plot_seroprev(draws_cat, model_data)
+```
+
+The underlying estimates are available as a tidy data frame:
+
+```{r seroprev-cat-extract}
+extract_seroprev(draws_cat, model_data) |> head()
+```
+
+### Overall titer distribution fit
+
+```{r dist-fit-cat, fig.cap="Observed titer histogram with posterior predictive mixture components"}
+plot_dist_fit(draws_cat, model_data)
+```
+
+### Observed vs predicted mean titer by age group
+
+```{r mean-titer-cat, fig.cap="Observed (grey) and predicted (green) mean titer by age group with 95% CIs/CrIs"}
+plot_mean_titer(draws_cat, model_data)
+```
+
+### Individual titer predictions
+
+```{r titer-pred-cat, fig.cap="Observed vs posterior median predicted titer per individual"}
+plot_titer_pred(draws_cat, model_data)
+```
+
+### Probability of seropositivity
+
+```{r prob-seropos-cat, fig.cap="Posterior median P(seropositive) as a function of observed titer"}
+plot_prob_seropos(draws_cat, model_data)
+```
+
+---
+
+## Mixture model outputs
+
+The non-catalytic `Mixture` model estimates seroprevalence independently per age group,
+without assuming endemic transmission. All titer diagnostic plots are identical to above
+since the mixture components are shared — only the seroprevalence output differs.
+
+### Age-specific seroprevalence
+
+```{r seroprev-mix, fig.cap="Estimated seroprevalence by age group with 95% CrI (mixture model)"}
+plot_seroprev_mix(draws_mix, model_data)
+```
+
+```{r seroprev-mix-extract}
+extract_seroprev_mix(draws_mix, model_data)
+```
+
+### Distribution fit
+
+```{r dist-fit-mix, fig.cap="Distribution fit (mixture model)"}
+plot_dist_fit(draws_mix, model_data)
+```
+
+---
+
+## Working with extract outputs
+
+Every `plot_*` function has a corresponding `extract_*` returning a tidy data frame for
+further analysis or custom plotting.
+
+```{r custom-plot, fig.cap="Custom seroprevalence plot comparing both models"}
+seroprev_cat <- extract_seroprev(draws_cat, model_data) |>
+  mutate(model = "Catalytic")
+
+seroprev_mix <- extract_seroprev_mix(draws_mix, model_data) |>
+  rename(age = age_mid, seroprev = seroprev, criL = criL, criU = criU) |>
+  mutate(model = "Mixture")
+
+# Overlay catalytic curve with mixture age-group estimates
+ggplot() +
+  geom_ribbon(data = seroprev_cat,
+              aes(x = age, ymin = criL, ymax = criU),
+              fill = "indianred2", alpha = 0.3) +
+  geom_line(data = seroprev_cat,
+            aes(x = age, y = seroprev),
+            color = "indianred2", linewidth = 1) +
+  geom_linerange(data = seroprev_mix,
+                 aes(x = age, ymin = criL, ymax = criU),
+                 color = "steelblue3", linewidth = 0.8) +
+  geom_point(data = seroprev_mix,
+             aes(x = age, y = seroprev),
+             color = "steelblue3", size = 3) +
+  annotate("text", x = c(70, 70), y = c(0.85, 0.75),
+           label = c("Catalytic", "Mixture"),
+           color = c("indianred2", "steelblue3"), size = 5) +
+  theme_bw() +
+  xlab("Age") + ylab("Seroprevalence") +
+  ylim(0, 1) +
+  theme(text = element_text(size = 14))
+```
+
+---
+
+## True parameter values
+
+Since this is simulated data, we can check estimates against the known truth.
+
+```{r true-params}
+simdata$truepars
+```
+
+```{r param-comparison}
+tibble(
+  parameter  = c("lambda", "mu0", "mu1", "sd0", "sd1"),
+  true_value = with(simdata$truepars, c(lam, mu0, mu1, sd0, sd1)),
+  post_median = c(
+    median(draws_cat$lambda),
+    median(draws_cat$mu0),
+    median(draws_cat$mu1),
+    median(draws_cat$sd0),
+    median(draws_cat$sd1)
+  ),
+  post_lo = c(
+    quantile(draws_cat$lambda, 0.025),
+    quantile(draws_cat$mu0,    0.025),
+    quantile(draws_cat$mu1,    0.025),
+    quantile(draws_cat$sd0,    0.025),
+    quantile(draws_cat$sd1,    0.025)
+  ),
+  post_hi = c(
+    quantile(draws_cat$lambda, 0.975),
+    quantile(draws_cat$mu0,    0.975),
+    quantile(draws_cat$mu1,    0.975),
+    quantile(draws_cat$sd0,    0.975),
+    quantile(draws_cat$sd1,    0.975)
+  )
+) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
+```
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```
