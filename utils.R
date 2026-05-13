@@ -82,18 +82,26 @@ extract_sero_age_cat <- function(draws, model_data, group_labels = NULL) {
   labels <- .group_labels(model_data, group_labels)
   ages   <- seq(min(model_data$ageL), max(model_data$ageU))
 
-  result <- do.call(rbind, lapply(seq_len(model_data$NGroup), function(g) {
-    foi  <- quantile(draws$lambda[, g], c(0.5, 0.025, 0.975))
+  curve_from_lambda <- function(lambda_draws) {
+    foi  <- quantile(lambda_draws, c(0.5, 0.025, 0.975))
     prev <- t(1 - exp(-outer(foi, ages)))
-    data.frame(age      = ages,
-               seroprev = prev[, 1],
-               criL     = prev[, 2],
-               criU     = prev[, 3],
-               group    = labels[g])
+    data.frame(age = ages, seroprev = prev[, 1], criL = prev[, 2], criU = prev[, 3])
+  }
+
+  result <- do.call(rbind, lapply(seq_len(model_data$NGroup), function(g) {
+    df <- curve_from_lambda(draws$lambda[, g])
+    df$group <- labels[g]
+    df
   }))
 
-  if (!.is_grouped(model_data)) result$group <- NULL
-  result
+  if (!.is_grouped(model_data)) {
+    result$group <- NULL
+    return(result)
+  }
+
+  overall_df       <- curve_from_lambda(draws$lambda_overall)
+  overall_df$group <- "Overall"
+  rbind(overall_df, result)
 }
 
 plot_sero_age_cat <- function(draws, model_data, group_labels = NULL) {
@@ -199,11 +207,23 @@ extract_sero <- function(draws, model_data, group_labels = NULL) {
 
 extract_foi <- function(draws, model_data, group_labels = NULL) {
   labels <- .group_labels(model_data, group_labels)
-  do.call(rbind, lapply(seq_len(model_data$NGroup), function(g) {
-    q <- quantile(draws$lambda[, g], c(0.5, 0.025, 0.975))
-    data.frame(group = labels[g], median = q[[1]], criL = q[[2]], criU = q[[3]],
-               row.names = NULL)
+
+  smry_lambda <- function(x) {
+    q <- quantile(x, c(0.5, 0.025, 0.975))
+    data.frame(median = q[[1]], criL = q[[2]], criU = q[[3]], row.names = NULL)
+  }
+
+  per_group <- do.call(rbind, lapply(seq_len(model_data$NGroup), function(g) {
+    data.frame(group = labels[g], smry_lambda(draws$lambda[, g]))
   }))
+
+  if (!.is_grouped(model_data)) {
+    per_group$group <- "Overall"
+    return(per_group)
+  }
+
+  overall_row <- data.frame(group = "Overall", smry_lambda(draws$lambda_overall))
+  rbind(overall_row, per_group)
 }
 
 
@@ -324,41 +344,6 @@ plot_mean_titer <- function(draws, model_data, group_labels = NULL) {
   if (.is_grouped(model_data)) p + facet_wrap(~group) else p
 }
 
-
-#------------------------------------------------------------------------------
-# Individual observed vs predicted titer
-#------------------------------------------------------------------------------
-
-extract_titer_pred <- function(draws, model_data, group_labels = NULL) {
-
-  labels <- .group_labels(model_data, group_labels)
-  result <- data.frame(
-    obs  = model_data$y,
-    pred = apply(draws$y_rep, 2, median)
-  )
-  if (.is_grouped(model_data)) result$group <- labels[model_data$group]
-  result
-}
-
-plot_titer_pred <- function(draws, model_data, group_labels = NULL) {
-
-  plot_df <- extract_titer_pred(draws, model_data, group_labels)
-
-  p <- ggplot(plot_df, aes(obs, pred)) +
-    geom_abline(slope = 1, intercept = 0, linewidth = 0.8) +
-    theme_bw() +
-    xlab("Observed titer") + ylab("Predicted titer") +
-    theme(text = element_text(size = 16))
-
-  if (.is_grouped(model_data)) {
-    p +
-      geom_point(aes(color = group), alpha = 0.5) +
-      labs(color = NULL) +
-      theme(legend.position = "top")
-  } else {
-    p + geom_point(alpha = 0.5)
-  }
-}
 
 
 #------------------------------------------------------------------------------
