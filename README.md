@@ -54,12 +54,20 @@ model_data <- make_model_data(
 fit <- stan(
   file   = "StanModels/MixtureCatalytic.stan",
   data   = model_data,
-  chains = 3, iter = 2000, warmup = 2000
+  chains = 3, iter = 1500, warmup = 500
 )
 
 # Plot seroprevalence curve with 95% CrI
 draws <- rstan::extract(fit)
 plot_seroprev(draws, model_data)
+
+# extract FOI estimates by location
+extract_foi(draws, model_data)
+
+# extract population seroprevalence estimates by location
+extract_sero(draws, model_data)
 ```
+
+
 
 See `vignettes/introduction.Rmd` for a full worked example including convergence checks, model comparison, and all available plot and extract functions.
