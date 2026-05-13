@@ -7,7 +7,7 @@ data {
  vector[NAgeG] ageL;                // lower bound of each age group
  vector[NAgeG] ageU;                // upper bound of each age group
  int NGroup;                        // N foi groups (1 = unstratified)
- array[N] int foiG;                 // foi group index for each individual
+ array[N] int group;                 // foi group index for each individual
  array[NGroup, NAgeG] int n_age;    // individuals per foi group x age group
  int predL;                         // length of titer fit values
  vector[predL] y_fit;               // titer fit values
@@ -46,8 +46,8 @@ transformed parameters {
 
   //--- likelihood calculation ---//
   for(n in 1:N){
-    pC[1,n] = log(1 - sero[ageG[n], foiG[n]]) + normal_lpdf(y[n] | mu0, sd0);
-    pC[2,n] = log(sero[ageG[n], foiG[n]])      + normal_lpdf(y[n] | mu0+mu1, sd1);
+    pC[1,n] = log(1 - sero[ageG[n], group[n]]) + normal_lpdf(y[n] | mu0, sd0);
+    pC[2,n] = log(sero[ageG[n], group[n]])      + normal_lpdf(y[n] | mu0+mu1, sd1);
     log_lik[n] = log_sum_exp(pC[,n]);
   }
 }
