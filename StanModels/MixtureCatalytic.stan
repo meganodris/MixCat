@@ -74,6 +74,7 @@ generated quantities {
   vector[N] y_rep;         // posterior predictive titer
   vector[NGroup] sero_grp; // seroprevalence per foi group (age-weighted)
   real sero_all;           // overall seroprevalence across all groups and age groups
+  real lambda_overall;     // sample-size-weighted average FOI across groups
   vector[predL] fitNeg;
   vector[predL] fitPos;
   vector[predL] fitAll;
@@ -89,11 +90,14 @@ generated quantities {
 
   {
     real weighted_sum = 0;
+    vector[NGroup] n_group;
     for(g in 1:NGroup){
-      sero_grp[g] = dot_product(to_vector(n_age[g]), col(sero, g)) / sum(n_age[g]);
-      weighted_sum += sero_grp[g] * sum(n_age[g]);
+      n_group[g]  = sum(n_age[g]);
+      sero_grp[g] = dot_product(to_vector(n_age[g]), col(sero, g)) / n_group[g];
+      weighted_sum += sero_grp[g] * n_group[g];
     }
-    sero_all = weighted_sum / N;
+    sero_all      = weighted_sum / N;
+    lambda_overall = dot_product(n_group / N, lambda);
   }
 
   for(i in 1:predL){
