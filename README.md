@@ -9,7 +9,7 @@ components correspond to seronegative (μ₀, σ₀) and seropositive (μ₀ +
 directly from the mixture components (`Mixture`) or jointly with a force
 of infection (FOI) parameter via a catalytic model (`MixtureCatalytic`).
 See the introductory
-[vignette](https://raw.githack.com/meganodris/MixCat/main/vignettes/Vignette.html)
+[vignette](https://github.com/meganodris/MixCat/blob/main/vignettes/Vignette.md)
 for a full worked example including the **`Mixture`** and
 **`Mixture Catalytic`** models, convergence diagnostics, and all
 available extract and plot functions.
@@ -167,7 +167,7 @@ plot_mean_titer(draws, model_data, group_labels = c("Rural", "Urban"))
 ![](vignettes/Vignette_files/figure-html/dist-fit-cat-2.png)<!-- -->
 
 See the introductory
-[vignette](https://raw.githack.com/meganodris/MixCat/main/vignettes/Vignette.html)
+[vignette](https://github.com/meganodris/MixCat/blob/main/vignettes/Vignette.md)
 for a full worked example including the **`Mixture`** and
 **`Mixture Catalytic`** models, convergence diagnostics, and all
 available extract and plot functions.
