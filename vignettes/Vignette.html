@@ -1509,8 +1509,8 @@ give an agnostic indication of past transmission dynamics (e.g. endemic
 or epidemic) for pathogens that induce life-long serological
 responses.</p>
 <p><strong><code>MixtureCatalytic</code></strong> can be used when
-endemic transmission is a reasonable assumption and/or when a trend of
-increasing seroprevalence by age was observed from the
+endemic transmission is a reasonable assumption, for example when a
+trend of increasing seroprevalence by age was observed from the
 <strong><code>Mixture</code></strong> model.</p>
 <p>Both models support the estimation of age-specific seroprevalence /
 FOI by sub-populations (e.g. urban/rural locations, sex, socioeconomic
@@ -1567,32 +1567,7 @@ youngest age group = 1 and the oldest age group = total number of age
 groups. It is important to check that you have sufficient sample size in
 each age group before model fitting. Wider age bins can be used when
 sample sizes are low.</p>
-<pre class="r"><code>simdata &lt;- readRDS(&quot;../data/SimulatedData.RDS&quot;)
-head(simdata$simdf)</code></pre>
-<pre><code>##   age_group location     titer
-## 1     80-90    Rural 1.6964506
-## 2     80-90    Rural 3.0761887
-## 3     20-29    Rural 0.4808274
-## 4     70-79    Urban 4.1101071
-## 5     50-59    Rural 6.5925526
-## 6     40-49    Rural 4.9717100</code></pre>
-<pre class="r"><code># Check sample sizes within age groups
-table(simdata$simdf$age_group)</code></pre>
-<pre><code>## 
-##   0-9 10-19 20-29 30-39 40-49 50-59 60-69 70-79 80-90 
-##    45    52    39    42    50    39    43    40    50</code></pre>
-<pre class="r"><code># Specify age group bounds — must match the levels of the age_group factor in the data
-ageL &lt;- c(0, 10, 20, 30, 40, 50, 60, 70, 80)
-ageU &lt;- c(9, 19, 29, 39, 49, 59, 69, 79, 90)
-
-# Convert age_group and location to integer indices for Stan.
-# Integer coding is based on factor level order (alphabetical):
-#   age_group: &quot;0-9&quot; = 1, &quot;10-19&quot; = 2, ..., &quot;80-90&quot; = 9
-#   location:  &quot;Rural&quot; = 1, &quot;Urban&quot; = 2
-df &lt;- simdata$simdf |&gt;
-  mutate(age_group_int = as.integer(age_group),
-         location_int  = as.integer(as.factor(location)))
-
+<pre class="r"><code>df &lt;- load_example_data(&quot;../data/SimulatedData.RDS&quot;)
 head(df)</code></pre>
 <pre><code>##   age_group location     titer age_group_int location_int
 ## 1     80-90    Rural 1.6964506             9            1
@@ -1601,6 +1576,14 @@ head(df)</code></pre>
 ## 4     70-79    Urban 4.1101071             8            2
 ## 5     50-59    Rural 6.5925526             6            1
 ## 6     40-49    Rural 4.9717100             5            1</code></pre>
+<pre class="r"><code># Check sample sizes within age groups
+table(df$age_group)</code></pre>
+<pre><code>## 
+##   0-9 10-19 20-29 30-39 40-49 50-59 60-69 70-79 80-90 
+##    45    52    39    42    50    39    43    40    50</code></pre>
+<pre class="r"><code># Specify age group bounds — must match the levels of the age_group factor in the data
+ageL &lt;- c(0, 10, 20, 30, 40, 50, 60, 70, 80)
+ageU &lt;- c(9, 19, 29, 39, 49, 59, 69, 79, 90)</code></pre>
 <p>Before fitting, it is worth visualising the antibody titer
 distribution to check whether the data are appropriate for a Gaussian
 mixture model. The data are assumed to be composed of two Gaussian
