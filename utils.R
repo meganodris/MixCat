@@ -16,6 +16,19 @@
 
 
 #------------------------------------------------------------------------------
+# Simulated data loader
+#------------------------------------------------------------------------------
+
+load_example_data <- function(path = "data/SimulatedData.RDS") {
+  readRDS(path)$simdf |>
+    dplyr::mutate(
+      age_group_int = as.integer(age_group),
+      location_int  = as.integer(as.factor(location))
+    )
+}
+
+
+#------------------------------------------------------------------------------
 # Model data constructor
 #------------------------------------------------------------------------------
 
