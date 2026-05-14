@@ -52,8 +52,8 @@ seroprevalence by age was observed from the **`Mixture`** model.
   timescales.
 - **`MixtureCatalytic`** assumes a constant endemic FOI with no
   differences in infection risk by age or over time. For pathogens with
-  seasonal or annual fluctuations, the FOI represents a long-term
-  average.
+  seasonal or annual fluctuations, the FOI estimate will represent a
+  long-term average.
 
 ## Setup
 
@@ -72,7 +72,7 @@ options(mc.cores = parallel::detectCores())
 
 ## Data preparation
 
-MixCat requires three inputs:
+MixCat requires only two inputs:
 
 - **`titer`**: numeric vector of antibody titer values (log-transform
   first for measurements on a large scale)
