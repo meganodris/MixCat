@@ -1,10 +1,6 @@
 ---
 title: "Introduction to MixCat"
-output:
-  html_document:
-    toc: true
-    toc_depth: 2
-    toc_float: true
+output: github_document
 vignette: >
   %\VignetteIndexEntry{Introduction to MixCat}
   %\VignetteEngine{knitr::rmarkdown}
@@ -71,7 +67,7 @@ MixCat inputs:
 Here we use a simulated dataset of 400 individuals with age group and location (urban vs rural) information. To prepare the data for model fitting, an ordered integer age group variable is required such that the youngest age group = 1 and the oldest age group = total number of age groups. It is important to check that you have sufficient sample size in each age group before model fitting. Wider age bins can be used when sample sizes are low.
 
 ```{r data}
-df <- load_example_data()
+df <- load_example_data("../data/SimulatedData.RDS")
 head(df)
 
 # Check sample sizes within age groups
