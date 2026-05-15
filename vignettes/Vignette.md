@@ -223,21 +223,37 @@ mcmc_rhat(rhats[grepl("^(sero|mu|sd)", names(rhats))]) + yaxis_text() + theme_bw
 
 Overall population seroprevalence estimates can be extracted with the
 `extract_sero` function. Here the model estimates 60% (95% credible
-interval: 54-65%) population seroprevalence. The function
-`extract_sero_age_mix` will return a dataframe of age-specific
-seroprevalence estimates from the `Mixture` model and the
-`plot_sero_age_mix` function will create a simple plot of these
-estimates. If model estimates were stratified by other groups,
-e.g. location, the `group_labels` argument can be used to specify
-labels.
+interval: 54-65%) population seroprevalence. Mixture parameter estimates
+($\mu_0$, $\mu_1$, $\sigma_0$, $\sigma_1$) can be extracted with
+`extract_mixture_params`. The function `extract_sero_age_mix` will
+return a dataframe of age-specific seroprevalence estimates from the
+`Mixture` model and the `plot_sero_age_mix` function will create a
+simple plot of these estimates. If model estimates were stratified by
+other groups, e.g. location, the `group_labels` argument can be used to
+specify labels.
 
 ``` r
+# extract model draws
 draws_mix <- rstan::extract(fit_mix)
+
+# extract seroprevalence estimates
 extract_sero(draws = draws_mix, model_data = model_data, group_labels = NULL)
 ```
 
     ##     label    median      criL      criU
     ## 1 Overall 0.5974571 0.5373107 0.6497456
+
+``` r
+# extract mixture parameters
+extract_mixture_params(draws = draws_mix)
+```
+
+    ##     param                        description    median      criL      criU
+    ## 1     mu0                  Seronegative mean 2.1362698 1.9606087 2.3468819
+    ## 2     mu1 Seropositive increment (above mu0) 2.4354825 2.2376791 2.6212379
+    ## 3     sd0                    Seronegative SD 0.8178264 0.6952549 0.9822546
+    ## 4     sd1                    Seropositive SD 0.7977543 0.7127559 0.9050867
+    ## 5 mu0+mu1                  Seropositive mean 4.5756236 4.4411847 4.7018989
 
 ``` r
 # get age-specific seroprevalence estimates from Mixture model
@@ -361,8 +377,11 @@ FOI in rural locations, 0.02 (95%CrI: 0.01-0.02), compared to 0.06
 (95%CrI: 0.04-0.08) in urban locations. This can be interpreted as 2%
 (95%CrI: 1-2%) and 6% (95%CrI: 4-8%) of the susceptible population
 become infected each year in rural and urban locations respectively.
+Mixture parameter estimates ($\mu_0$, $\mu_1$, $\sigma_0$, $\sigma_1$)
+can be extracted with `extract_mixture_params`.
 
 ``` r
+# extract model draws
 draws_cat <- rstan::extract(fit_cat)
 
 # extract FOI estimates by location
@@ -383,6 +402,18 @@ extract_sero(draws_cat, model_data_loc, group_labels = c("Rural", "Urban"))
     ## 1 Overall 0.6492860 0.5933546 0.6983310
     ## 2   Rural 0.4998408 0.4229466 0.5689846
     ## 3   Urban 0.8019140 0.7372147 0.8585081
+
+``` r
+# extract mixture parameter estimates (shared across groups)
+extract_mixture_params(draws_cat)
+```
+
+    ##     param                        description    median      criL      criU
+    ## 1     mu0                  Seronegative mean 2.0385897 1.8858091 2.2115229
+    ## 2     mu1 Seropositive increment (above mu0) 2.4549463 2.2720579 2.6279472
+    ## 3     sd0                    Seronegative SD 0.7659182 0.6658806 0.8934627
+    ## 4     sd1                    Seropositive SD 0.8560541 0.7617385 0.9611228
+    ## 5 mu0+mu1                  Seropositive mean 4.4949413 4.3585066 4.6271972
 
 ``` r
 # extract age-specific seroprevalence estimates by location

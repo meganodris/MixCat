@@ -118,6 +118,7 @@ model_data <- make_model_data(
 ## Model fitting
 
 ``` r
+# fit mixture catalytic model
 fit <- stan(
   file    = "StanModels/MixtureCatalytic.stan",
   data    = model_data,
@@ -125,18 +126,45 @@ fit <- stan(
   iter    = 1500, warmup = 500
 )
 
+# extract model draws
 draws <- rstan::extract(fit)
 ```
 
 ## Results
 
 FOI and seroprevalence estimates can be extracted with the `extract_foi`
-and `extract_sero` functions:
+and `extract_sero` functions. Mixture parameter estimates (μ₀, μ₁, σ₀,
+σ₁ and the seropositive mean μ₀ + μ₁) can be extracted with
+`extract_mixture_params`:
 
 ``` r
 extract_foi(draws, model_data, group_labels = c("Rural", "Urban"))
+```
+
+    ##     group     median       criL       criU
+    ## 1 Overall 0.03786508 0.02941767 0.04984874
+    ## 2   Rural 0.01796712 0.01388599 0.02255612
+    ## 3   Urban 0.05802479 0.04243349 0.08062711
+
+``` r
 extract_sero(draws, model_data, group_labels = c("Rural", "Urban"))
 ```
+
+    ##     label    median      criL      criU
+    ## 1 Overall 0.6499202 0.5947655 0.6978655
+    ## 2   Rural 0.5011428 0.4273378 0.5672582
+    ## 3   Urban 0.8025892 0.7336876 0.8589687
+
+``` r
+extract_mixture_params(draws)
+```
+
+    ##     param                        description    median      criL      criU
+    ## 1     mu0                  Seronegative mean 2.0398077 1.8828695 2.2134983
+    ## 2     mu1 Seropositive increment (above mu0) 2.4548960 2.2654178 2.6294119
+    ## 3     sd0                    Seronegative SD 0.7690218 0.6641915 0.9001904
+    ## 4     sd1                    Seropositive SD 0.8561214 0.7574016 0.9657785
+    ## 5 mu0+mu1                  Seropositive mean 4.4979454 4.3578205 4.6232094
 
 The functions `extract_sero_age_mix` and `extract_sero_age_cat` return
 age-specific seroprevalence estimates for the **`Mixture`** and
@@ -145,7 +173,18 @@ visualised using the corresponding plotting functions,
 e.g. `plot_sero_age_cat`.
 
 ``` r
-extract_sero_age_cat(draws, model_data, group_labels = c("Rural", "Urban"))
+extract_sero_age_cat(draws, model_data, group_labels = c("Rural", "Urban")) |> head()
+```
+
+    ##   age   seroprev       criL       criU   group
+    ## 1   0 0.00000000 0.00000000 0.00000000 Overall
+    ## 2   1 0.03715716 0.02898918 0.04862668 Overall
+    ## 3   2 0.07293367 0.05713798 0.09488881 Overall
+    ## 4   3 0.10738082 0.08447078 0.13890136 Overall
+    ## 5   4 0.14054802 0.11101122 0.18077373 Overall
+    ## 6   5 0.17248281 0.13678228 0.22060998 Overall
+
+``` r
 plot_sero_age_cat(draws, model_data, group_labels = c("Rural", "Urban"))
 ```
 

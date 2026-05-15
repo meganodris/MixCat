@@ -241,6 +241,35 @@ extract_foi <- function(draws, model_data, group_labels = NULL) {
 
 
 #------------------------------------------------------------------------------
+# Mixture parameter summaries — mu0, mu1, sd0, sd1
+#------------------------------------------------------------------------------
+
+extract_mixture_params <- function(draws) {
+  smry <- function(x) {
+    q <- quantile(x, c(0.5, 0.025, 0.975))
+    data.frame(median = q[[1]], criL = q[[2]], criU = q[[3]], row.names = NULL)
+  }
+
+  descriptions <- c(
+    mu0       = "Seronegative mean",
+    mu1       = "Seropositive increment (above mu0)",
+    sd0       = "Seronegative SD",
+    sd1       = "Seropositive SD",
+    `mu0+mu1` = "Seropositive mean"
+  )
+
+  rows <- lapply(c("mu0", "mu1", "sd0", "sd1"), function(p) {
+    data.frame(param = p, smry(draws[[p]]))
+  })
+  rows[[5]] <- data.frame(param = "mu0+mu1", smry(draws$mu0 + draws$mu1))
+
+  result <- do.call(rbind, rows)
+  result$description <- descriptions[result$param]
+  result[, c("param", "description", "median", "criL", "criU")]
+}
+
+
+#------------------------------------------------------------------------------
 # Overall distribution fit (seronegative / seropositive / overall)
 #------------------------------------------------------------------------------
 

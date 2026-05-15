@@ -153,11 +153,17 @@ mcmc_rhat(rhats[grepl("^(sero|mu|sd)", names(rhats))]) + yaxis_text() + theme_bw
 
 ### Model estimates
 
-Overall population seroprevalence estimates can be extracted with the `extract_sero` function. Here the model estimates 60% (95% credible interval: 54-65%) population seroprevalence. The function `extract_sero_age_mix` will return a dataframe of age-specific seroprevalence estimates from the `Mixture` model and the `plot_sero_age_mix` function will create a simple plot of these estimates. If model estimates were stratified by other groups, e.g. location, the `group_labels` argument can be used to specify labels. 
+Overall population seroprevalence estimates can be extracted with the `extract_sero` function. Here the model estimates 60% (95% credible interval: 54-65%) population seroprevalence. Mixture parameter estimates ($\mu_0$, $\mu_1$, $\sigma_0$, $\sigma_1$) can be extracted with `extract_mixture_params`. The function `extract_sero_age_mix` will return a dataframe of age-specific seroprevalence estimates from the `Mixture` model and the `plot_sero_age_mix` function will create a simple plot of these estimates. If model estimates were stratified by other groups, e.g. location, the `group_labels` argument can be used to specify labels. 
 
 ```{r extract-mix}
+# extract model draws
 draws_mix <- rstan::extract(fit_mix)
+
+# extract seroprevalence estimates
 extract_sero(draws = draws_mix, model_data = model_data, group_labels = NULL)
+
+# extract mixture parameters
+extract_mixture_params(draws = draws_mix)
 ```
 
 ```{r seroprev-mix-extract}
@@ -230,9 +236,10 @@ mcmc_rhat(rhats_cat[grepl("^(lambda|mu|sd)", names(rhats_cat))]) + yaxis_text() 
 
 ### Model estimates
 
-Population seroprevalence and FOI estimates can be extracted with the `extract_sero` and `extract_foi()` functions. Here we estimate a lower FOI in rural locations, 0.02 (95%CrI: 0.01-0.02), compared to 0.06 (95%CrI: 0.04-0.08) in urban locations. This can be interpreted as 2% (95%CrI: 1-2%) and 6% (95%CrI: 4-8%) of the susceptible population become infected each year in rural and urban locations respectively.
+Population seroprevalence and FOI estimates can be extracted with the `extract_sero` and `extract_foi()` functions. Here we estimate a lower FOI in rural locations, 0.02 (95%CrI: 0.01-0.02), compared to 0.06 (95%CrI: 0.04-0.08) in urban locations. This can be interpreted as 2% (95%CrI: 1-2%) and 6% (95%CrI: 4-8%) of the susceptible population become infected each year in rural and urban locations respectively. Mixture parameter estimates ($\mu_0$, $\mu_1$, $\sigma_0$, $\sigma_1$) can be extracted with `extract_mixture_params`.
 
 ```{r cat-estimates}
+# extract model draws
 draws_cat <- rstan::extract(fit_cat)
 
 # extract FOI estimates by location
@@ -240,6 +247,9 @@ extract_foi(draws_cat, model_data_loc, group_labels = c("Rural", "Urban"))
 
 # extract population seroprevalence estimates by location
 extract_sero(draws_cat, model_data_loc, group_labels = c("Rural", "Urban"))
+
+# extract mixture parameter estimates (shared across groups)
+extract_mixture_params(draws_cat)
 ```
 
 

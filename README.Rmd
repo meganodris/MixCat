@@ -79,6 +79,7 @@ model_data <- make_model_data(
 ## Model fitting
 
 ``` r
+# fit mixture catalytic model
 fit <- stan(
   file    = "StanModels/MixtureCatalytic.stan",
   data    = model_data,
@@ -86,22 +87,31 @@ fit <- stan(
   iter    = 1500, warmup = 500
 )
 
+# extract model draws
 draws <- rstan::extract(fit)
 ```
 
 ## Results
 
-FOI and seroprevalence estimates can be extracted with the `extract_foi` and `extract_sero` functions:
+```{r load-draws, echo=FALSE}
+draws <- readRDS("data/draws_cat.RDS")
+```
 
-``` r
+FOI and seroprevalence estimates can be extracted with the `extract_foi` and `extract_sero` functions. Mixture parameter estimates (μ₀, μ₁, σ₀, σ₁ and the seropositive mean μ₀ + μ₁) can be extracted with `extract_mixture_params`:
+
+```{r results}
 extract_foi(draws, model_data, group_labels = c("Rural", "Urban"))
 extract_sero(draws, model_data, group_labels = c("Rural", "Urban"))
+extract_mixture_params(draws)
 ```
 
 The functions `extract_sero_age_mix` and `extract_sero_age_cat` return age-specific seroprevalence estimates for the **`Mixture`** and **`MixtureCatalytic`** models respectively. These estimates can also be visualised using the corresponding plotting functions, e.g. `plot_sero_age_cat`.
 
+```{r extract sero}
+extract_sero_age_cat(draws, model_data, group_labels = c("Rural", "Urban")) |> head()
+```
+
 ``` r
-extract_sero_age_cat(draws, model_data, group_labels = c("Rural", "Urban"))
 plot_sero_age_cat(draws, model_data, group_labels = c("Rural", "Urban"))
 ```
 
